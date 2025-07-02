@@ -1,0 +1,158 @@
+# configs/logging.yaml
+# Logging configuration
+
+version: 1
+disable_existing_loggers: false
+
+formatters:
+  default:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+  
+  json:
+    class: pythonjsonlogger.jsonlogger.JsonFormatter
+    format: '%(asctime)s %(name)s %(levelname)s %(message)s'
+  
+  detailed:
+    format: '%(asctime)s - %(name)s - %(levelname)s - %(funcName)s:%(lineno)d - %(message)s'
+    datefmt: '%Y-%m-%d %H:%M:%S'
+
+filters:
+  exclude_health_checks:
+    class: logging.Filter
+    name: exclude_health_checks
+
+handlers:
+  console:
+    class: logging.StreamHandler
+    level: INFO
+    formatter: json
+    stream: ext://sys.stdout
+  
+  file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/automl.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 10
+    encoding: utf8
+  
+  error_file:
+    class: logging.handlers.RotatingFileHandler
+    level: ERROR
+    formatter: detailed
+    filename: logs/errors.log
+    maxBytes: 10485760  # 10MB
+    backupCount: 5
+    encoding: utf8
+  
+  debug_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: detailed
+    filename: logs/debug.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 3
+    encoding: utf8
+  
+  agent_file:
+    class: logging.handlers.RotatingFileHandler
+    level: DEBUG
+    formatter: json
+    filename: logs/agents.log
+    maxBytes: 52428800  # 50MB
+    backupCount: 5
+    encoding: utf8
+  
+  ml_file:
+    class: logging.handlers.RotatingFileHandler
+    level: INFO
+    formatter: json
+    filename: logs/ml_operations.log
+    maxBytes: 104857600  # 100MB
+    backupCount: 10
+    encoding: utf8
+
+loggers:
+  # Root logger
+  root:
+    level: INFO
+    handlers: [console, file, error_file]
+  
+  # Application loggers
+  src.api:
+    level: INFO
+    handlers: [console, file]
+    propagate: false
+  
+  src.agents:
+    level: DEBUG
+    handlers: [agent_file, console]
+    propagate: false
+  
+  src.ml:
+    level: INFO
+    handlers: [ml_file, console]
+    propagate: false
+  
+  src.workflows:
+    level: DEBUG
+    handlers: [agent_file, console]
+    propagate: false
+  
+  # Third-party loggers
+  uvicorn:
+    level: INFO
+    handlers: [console]
+    propagate: false
+  
+  uvicorn.access:
+    level: INFO
+    handlers: [file]
+    filters: [exclude_health_checks]
+    propagate: false
+  
+  sqlalchemy:
+    level: WARNING
+    handlers: [file]
+    propagate: false
+  
+  sqlalchemy.engine:
+    level: WARNING
+    handlers: [file]
+    propagate: false
+  
+  langchain:
+    level: INFO
+    handlers: [agent_file]
+    propagate: false
+  
+  openai:
+    level: WARNING
+    handlers: [file]
+    propagate: false
+  
+  # Silence noisy libraries
+  urllib3:
+    level: WARNING
+    handlers: [file]
+    propagate: false
+  
+  httpx:
+    level: WARNING
+    handlers: [file]
+    propagate: false
+
+# Log record attributes to include
+log_record_attributes:
+  - name
+  - levelname
+  - pathname
+  - lineno
+  - funcName
+  - created
+  - thread
+  - threadName
+  - process
+  - processName

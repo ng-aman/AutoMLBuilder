@@ -1,0 +1,11 @@
+# src/frontend/components/__init__.py
+"""
+Reusable UI components for the Streamlit frontend.
+"""
+
+from .auth import AuthComponent, check_oauth_callback
+
+__all__ = [
+    "AuthComponent",
+    "check_oauth_callback",
+]

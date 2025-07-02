@@ -1,0 +1,101 @@
+# docker/docker-compose.yml
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: automl_postgres
+    environment:
+      POSTGRES_DB: automl
+      POSTGRES_USER: automl_user
+      POSTGRES_PASSWORD: automl_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U automl_user"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: automl_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:latest
+    container_name: automl_mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../mlruns:/mlflow
+    environment:
+      MLFLOW_BACKEND_STORE_URI: postgresql://automl_user:automl_password@postgres:5432/automl
+    command: >
+      mlflow server
+      --backend-store-uri postgresql://automl_user:automl_password@postgres:5432/automl
+      --default-artifact-root /mlflow
+      --host 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    container_name: automl_api
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../src:/app/src
+      - ../data:/app/data
+      - ../configs:/app/configs
+    environment:
+      DATABASE_URL: postgresql://automl_user:automl_password@postgres:5432/automl
+      REDIS_URL: redis://redis:6379
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      PYTHONPATH: /app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mlflow:
+        condition: service_started
+    command: ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.frontend
+    container_name: automl_frontend
+    ports:
+      - "8501:8501"
+    volumes:
+      - ../src/frontend:/app
+    environment:
+      API_URL: http://api:8000
+      PYTHONPATH: /app
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  default:
+    name: automl_network

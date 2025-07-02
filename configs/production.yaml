@@ -1,0 +1,131 @@
+# configs/production.yaml
+# Production environment configuration
+
+api:
+  host: "0.0.0.0"
+  port: 8000
+  debug: false
+  reload: false
+  workers: 4
+  cors_origins:
+    - "https://automl-builder.com"
+    - "https://app.automl-builder.com"
+
+database:
+  pool_size: 20
+  max_overflow: 40
+  pool_pre_ping: true
+  echo: false
+  pool_recycle: 3600  # Recycle connections after 1 hour
+
+redis:
+  decode_responses: false
+  socket_connect_timeout: 10
+  socket_timeout: 10
+  max_connections: 50
+  connection_pool_kwargs:
+    max_connections: 100
+    retry_on_timeout: true
+
+mlflow:
+  experiment_name: "automl_production"
+  artifact_location: "s3://automl-artifacts/mlruns"
+  registry_uri: "postgresql://mlflow:password@mlflow-db:5432/mlflow"
+  
+langchain:
+  verbose: false
+  cache: true
+  callbacks: true
+
+langraph:
+  checkpoint_interval: 10
+  max_iterations: 100
+  memory_type: "redis"
+  debug: false
+
+agents:
+  llm_model: "gpt-4"
+  temperature: 0.1
+  max_tokens: 2000
+  max_retries: 5
+  timeout_seconds: 600
+  request_timeout: 120
+
+features:
+  enable_debug_mode: false
+  enable_auto_mode: true
+  enable_interactive_mode: true
+  max_upload_size_mb: 500
+  max_concurrent_experiments: 10
+  allow_anonymous_access: false
+
+preprocessing:
+  default_imputation_strategy: "median"
+  default_scaling_method: "robust"
+  handle_outliers: true
+  outlier_threshold: 3.0
+  drop_high_cardinality_threshold: 0.99
+  drop_low_variance_threshold: 0.001
+
+model_training:
+  cv_folds: 10
+  test_size: 0.2
+  random_state: 42
+  n_jobs: -1
+  early_stopping: true
+  early_stopping_rounds: 20
+
+optimization:
+  n_trials: 200
+  timeout: 7200  # 2 hours
+  n_jobs: 4
+  sampler: "TPESampler"
+  pruner: "HyperbandPruner"
+  direction: "maximize"
+
+logging:
+  level: "WARNING"
+  format: "json"
+  file: "/var/log/automl/automl_prod.log"
+  max_size_mb: 1000
+  backup_count: 10
+  syslog:
+    enabled: true
+    host: "syslog.internal"
+    port: 514
+
+security:
+  jwt_expiration_hours: 12
+  password_min_length: 12
+  max_login_attempts: 3
+  lockout_duration_minutes: 30
+  enable_rate_limiting: true
+  rate_limit_requests: 100
+  rate_limit_window: 60  # seconds
+
+monitoring:
+  enable_metrics: true
+  metrics_port: 9090
+  health_check_interval: 15
+  performance_tracking: true
+  apm:
+    enabled: true
+    service_name: "automl-builder"
+    server_url: "https://apm.internal"
+  
+backup:
+  enabled: true
+  schedule: "0 2 * * *"  # Daily at 2 AM
+  retention_days: 30
+  s3_bucket: "automl-backups"
+
+cache:
+  default_ttl: 3600
+  max_entries: 10000
+  eviction_policy: "lru"
+
+email:
+  smtp_host: "smtp.sendgrid.net"
+  smtp_port: 587
+  use_tls: true
+  from_address: "noreply@automl-builder.com"
